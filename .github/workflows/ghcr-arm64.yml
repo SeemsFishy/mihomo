@@ -16,6 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Download geo databases
+        run: |
+          set -eu
+          mkdir -p docker/geo
+          base=https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest
+          for name in geoip.metadb geosite.dat geoip.dat; do
+            curl -fL --retry 10 --retry-all-errors --retry-delay 3 \
+              -o "docker/geo/$name" "$base/$name"
+          done
+
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
@@ -27,7 +37,7 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ github.workspace }}
           platforms: linux/arm64
           push: true
           tags: |
