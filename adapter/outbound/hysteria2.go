@@ -62,6 +62,12 @@ type Hysteria2Option struct {
 	BBRProfile        string     `proxy:"bbr-profile,omitempty"`
 	UdpMTU            int        `proxy:"udp-mtu,omitempty"`
 	HandshakeTimeout  int        `proxy:"handshake-timeout,omitempty"`
+	// UDP0RTT sends the first UDP datagrams without waiting for the Hysteria
+	// auth response. nil means on, including obfs salamander and gecko.
+	// On a resumed QUIC session those datagrams are real 0-RTT; otherwise they
+	// leave in the same flight as the auth POST.
+	// Set udp-0rtt: false to use the original wait-for-233 handshake.
+	UDP0RTT *bool `proxy:"udp-0rtt,omitempty"`
 
 	RealmOpts Hysteria2RealmOption `proxy:"realm-opts,omitempty"`
 
@@ -232,6 +238,7 @@ func NewHysteria2(option Hysteria2Option) (*Hysteria2, error) {
 			common.SetCongestionController(quicConn, "bbr", option.CWND, option.BBRProfile)
 		},
 		HandshakeTimeout: time.Duration(option.HandshakeTimeout) * time.Second,
+		UDP0RTT:          udp0RTTEnabled(option.UDP0RTT),
 	}
 
 	var serverPorts []uint16
@@ -318,4 +325,11 @@ func NewHysteria2(option Hysteria2Option) (*Hysteria2, error) {
 	outbound.client = client
 
 	return outbound, nil
+}
+
+func udp0RTTEnabled(v *bool) bool {
+	if v == nil {
+		return true
+	}
+	return *v
 }

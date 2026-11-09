@@ -1,0 +1,45 @@
+name: linux amd64 binary
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - udp0rtt
+
+permissions:
+  contents: write
+
+jobs:
+  binary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          set -eu
+          go build -tags with_gvisor -trimpath \
+            -ldflags "-s -w -buildid= -X github.com/metacubex/mihomo/constant.Version=v1.19.33-udp0rtt" \
+            -o "$GITHUB_WORKSPACE/mihomo-linux-amd64" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mihomo-linux-amd64
+          path: mihomo-linux-amd64
+
+      - name: Attach to a release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          tag=v1.19.33-udp0rtt
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "$tag" --target udp0rtt --notes "Static linux/amd64 mihomo v1.19.33 with Hysteria2 UDP 0-RTT."
+          gh release upload "$tag" mihomo-linux-amd64 --clobber
